@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>WaterTrans</Authors>
+    <Product>AzureBlobFileProvider</Product>
+    <Description>Azure Blob Storage file provider (IFileProvider) for ASP.NET Core.</Description>
+    <Copyright>© 2021 WaterTrans and Contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/WaterTrans/AzureBlobFileProvider</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/WaterTrans/AzureBlobFileProvider</RepositoryUrl>
+    <PackageTags>IFileProvider BlobFileProvider</PackageTags>
+    <PackageReleaseNotes>https://github.com/WaterTrans/AzureBlobFileProvider</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\WaterTrans.AzureBlobFileProvider.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\WaterTrans.AzureBlobFileProvider.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="3.1.19" />
+  </ItemGroup>
+
+</Project>
