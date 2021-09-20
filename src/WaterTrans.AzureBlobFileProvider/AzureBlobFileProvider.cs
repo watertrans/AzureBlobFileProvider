@@ -7,6 +7,7 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace WaterTrans.AzureBlobFileProvider
 {
@@ -22,6 +23,7 @@ namespace WaterTrans.AzureBlobFileProvider
         private readonly string _localCacheRoot;
         private readonly ConcurrentDictionary<string, DateTimeOffset> _localCacheTimeouts;
         private readonly int _localCacheTimeoutInSeconds;
+        private readonly char[] _escapeChars;
 
         /// <summary>
         /// Initializes an instance of <see cref="AzureBlobFileProvider"/>
@@ -29,6 +31,8 @@ namespace WaterTrans.AzureBlobFileProvider
         /// <param name="options">The <see cref="AzureBlobOptions"/>.</param>
         public AzureBlobFileProvider(AzureBlobOptions options)
         {
+            var invalidChars = Path.GetInvalidPathChars().Union(Path.GetInvalidFileNameChars());
+            _escapeChars = invalidChars.Where(c => c != Path.DirectorySeparatorChar && c != Path.AltDirectorySeparatorChar).ToArray();
             _localCacheTimeouts = new ConcurrentDictionary<string, DateTimeOffset>();
             _localCacheTimeoutInSeconds = options.LocalCacheTimeout;
 
@@ -75,12 +79,15 @@ namespace WaterTrans.AzureBlobFileProvider
         public IFileInfo GetFileInfo(string subpath)
         {
             DateTimeOffset timeout = DateTimeOffset.MinValue;
+            string escapedSubpath = EscapeInvalidPathChars(subpath);
+            string escapedRelativePath = escapedSubpath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             string relativePath = subpath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string fullPath = GetFullPath(_localCacheRoot, relativePath);
-            IFileInfo localCacheFileInfo = _physicalFileProvider.GetFileInfo(subpath);
+            string fullPath = GetFullPath(_localCacheRoot, escapedRelativePath);
+            string cacheKey = fullPath.ToLower();
+            IFileInfo localCacheFileInfo = _physicalFileProvider.GetFileInfo(escapedSubpath);
 
             // Check the timeout of the local cache.
-            _localCacheTimeouts.TryGetValue(fullPath.ToLower(), out timeout);
+            _localCacheTimeouts.TryGetValue(cacheKey, out timeout);
             if (localCacheFileInfo.Exists && DateTimeOffset.UtcNow < timeout)
             {
                 return localCacheFileInfo;
@@ -101,7 +108,7 @@ namespace WaterTrans.AzureBlobFileProvider
                 }
 
                 var newTimeout = DateTimeOffset.UtcNow.AddSeconds(_localCacheTimeoutInSeconds);
-                _localCacheTimeouts.AddOrUpdate(fullPath.ToLower(), newTimeout, (key, value) =>
+                _localCacheTimeouts.AddOrUpdate(cacheKey, newTimeout, (key, value) =>
                 {
                     return newTimeout;
                 });
@@ -116,6 +123,23 @@ namespace WaterTrans.AzureBlobFileProvider
 
         /// <inheritdoc />
         public IChangeToken Watch(string filter) => null;
+
+        private string EscapeInvalidPathChars(string path)
+        {
+            var result = new StringBuilder();
+            foreach(char c in path)
+            {
+                if (_escapeChars.Contains(c))
+                {
+                    result.Append(Uri.HexEscape(c));
+                }
+                else
+                {
+                    result.Append(c);
+                }
+            }
+            return result.ToString();
+        }
 
         private static bool PathNavigatesAboveRoot(string path)
         {
