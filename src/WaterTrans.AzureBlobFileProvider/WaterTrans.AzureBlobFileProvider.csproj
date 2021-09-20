@@ -12,6 +12,7 @@
     <RepositoryUrl>https://github.com/WaterTrans/AzureBlobFileProvider</RepositoryUrl>
     <PackageTags>IFileProvider BlobFileProvider</PackageTags>
     <PackageReleaseNotes>https://github.com/WaterTrans/AzureBlobFileProvider</PackageReleaseNotes>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

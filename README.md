@@ -122,3 +122,5 @@ In case both `ConnectionString` and `Token` are present, connection string is gi
 
 ### Note
 
+- Blob items that contain invalid file path characters will be escaped and stored in the local cache.
+
