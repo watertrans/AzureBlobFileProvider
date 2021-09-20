@@ -46,7 +46,7 @@ namespace WaterTrans.AzureBlobFileProvider
             }
             else
             {
-                throw new ArgumentException("Must be set 'ConnectionString' or 'ServiceUri' + 'Signature'.");
+                throw new ArgumentException("Must be set 'ConnectionString' or 'ServiceUri' + 'Token'.");
             }
 
             _containerClient = _serviceClient.GetBlobContainerClient(options.ContainerName);

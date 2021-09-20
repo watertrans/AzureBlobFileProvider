@@ -19,7 +19,7 @@ namespace WaterTrans.AzureBlobFileProvider.SampleWeb
                 LocalCacheTimeout = 300,
             };
 
-            // SAS (ServiceUri + Signature)
+            // SAS (ServiceUri + Token)
             /*
             var blobOptions = new AzureBlobOptions
             {
