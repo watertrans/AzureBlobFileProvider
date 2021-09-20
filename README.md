@@ -9,6 +9,7 @@ Install-Package WaterTrans.AzureBlobFileProvider
 ### Features
 - Serve the files in the blob container as static files.
 - Download the blob item to the local cache and respond from the local cache for the specified number of seconds.
+- The local cache can be ignored by query parameter.
 - The location of the local cache directory can be specified.
 
 ### Usage
@@ -24,12 +25,13 @@ Below is the usage example for both flows - where access to files from Blob Stor
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            var blobOptions = new AzureBlobOptions
+            // ConnectionString
+            services.AddAzureBlobFileProvider(options =>
             {
-                ConnectionString = "UseDevelopmentStorage=true",
-                ContainerName = "files",
-            };
-            services.AddSingleton(new AzureBlobFileProvider(blobOptions));
+                options.ConnectionString = "UseDevelopmentStorage=true";
+                options.ContainerName = "files";
+                options.LocalCacheTimeout = 300;
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -74,13 +76,14 @@ Below is the usage example for both flows - where access to files from Blob Stor
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            var blobOptions = new AzureBlobOptions
+            // SAS (ServiceUri + Token)
+            services.AddAzureBlobFileProvider(options =>
             {
-                ServiceUri = new System.Uri("BLOB_SERVICE_SAS_URL"), // ex.) https://youraccount.blob.core.windows.net
-                Token = "SAS_TOKEN",                                 // ex.) ?sv=2020-08-04&ss=b&srt=co&sp=rltfx&se=2021-01-01T00:00:00Z&st=2021-01-02T00:00:00Z&spr=https&sig=xxxxxxxxxxxxxxxxxxxxxx%2Bx%2Fxx%2Bxxxxxxxxxxxxxxx%3D
-                ContainerName = "files",
-            };
-            services.AddSingleton(new AzureBlobFileProvider(blobOptions));
+                options.ServiceUri = new System.Uri("https://youraccount.blob.core.windows.net");
+                options.Token = "?sv=2020-08-04&ss=b&srt=co&sp=rltfx&se=2021-01-01T00:00:00Z&st=2021-01-02T00:00:00Z&spr=https&sig=xxxxxxxxxxxxxxxxxxxxxx%2Bx%2Fxx%2Bxxxxxxxxxxxxxxx%3D";
+                options.ContainerName = "files";
+                options.LocalCacheTimeout = 300;
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -123,4 +126,7 @@ In case both `ConnectionString` and `Token` are present, connection string is gi
 ### Note
 
 - Blob items that contain invalid file path characters will be escaped and stored in the local cache.
-
+- If the local cache directory is omitted, the following directory will be used.  
+  ``Path.Combine(Path.GetTempPath(), "AzureBlobFileProvider", StorageAccountName, ContainerName)``
+- You can ignore the local cache by giving the query parameter as follows.  
+  ``/files/favicon.ico?ignoreCache=true``

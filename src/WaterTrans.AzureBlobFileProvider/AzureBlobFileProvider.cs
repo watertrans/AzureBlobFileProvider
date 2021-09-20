@@ -1,7 +1,9 @@
 ﻿using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Concurrent;
@@ -17,6 +19,7 @@ namespace WaterTrans.AzureBlobFileProvider
     public class AzureBlobFileProvider : IFileProvider
     {
         private const string TEMP_SUBPATH = "AzureBlobFileProvider";
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly BlobServiceClient _serviceClient;
         private readonly BlobContainerClient _containerClient;
         private readonly PhysicalFileProvider _physicalFileProvider;
@@ -24,34 +27,50 @@ namespace WaterTrans.AzureBlobFileProvider
         private readonly ConcurrentDictionary<string, DateTimeOffset> _localCacheTimeouts;
         private readonly int _localCacheTimeoutInSeconds;
         private readonly char[] _escapeChars;
+        private readonly string _ignoreCacheQueryKey;
 
         /// <summary>
         /// Initializes an instance of <see cref="AzureBlobFileProvider"/>
         /// </summary>
-        /// <param name="options">The <see cref="AzureBlobOptions"/>.</param>
-        public AzureBlobFileProvider(AzureBlobOptions options)
+        /// <param name="httpContextAccessor">The <see cref="IHttpContextAccessor"/>.</param>
+        /// <param name="options">The configuration options.</param>
+        public AzureBlobFileProvider(IHttpContextAccessor httpContextAccessor, IOptions<AzureBlobOptions> options)
         {
+            var blobOptions = options.Value;
+
+            if (string.IsNullOrEmpty(blobOptions.ContainerName))
+            {
+                throw new ArgumentException($"{nameof(AzureBlobOptions.ContainerName)} cannot be empty or null.");
+            }
+
+            if (string.IsNullOrEmpty(blobOptions.IgnoreCacheQueryKey))
+            {
+                throw new ArgumentException($"{nameof(AzureBlobOptions.IgnoreCacheQueryKey)} cannot be empty or null.");
+            }
+
             var invalidChars = Path.GetInvalidPathChars().Union(Path.GetInvalidFileNameChars());
             _escapeChars = invalidChars.Where(c => c != Path.DirectorySeparatorChar && c != Path.AltDirectorySeparatorChar).ToArray();
             _localCacheTimeouts = new ConcurrentDictionary<string, DateTimeOffset>();
-            _localCacheTimeoutInSeconds = options.LocalCacheTimeout;
+            _localCacheTimeoutInSeconds = blobOptions.LocalCacheTimeout;
+            _ignoreCacheQueryKey = blobOptions.IgnoreCacheQueryKey;
+            _httpContextAccessor = httpContextAccessor;
 
-            if (options.ConnectionString != null)
+            if (blobOptions.ConnectionString != null)
             {
-                _serviceClient = new BlobServiceClient(options.ConnectionString, options.BlobClientOptions);
+                _serviceClient = new BlobServiceClient(blobOptions.ConnectionString, blobOptions.BlobClientOptions);
             }
-            else if (options.ServiceUri != null && options.Token != null)
+            else if (blobOptions.ServiceUri != null && blobOptions.Token != null)
             {
-                _serviceClient = new BlobServiceClient(options.ServiceUri, new AzureSasCredential(options.Token), options.BlobClientOptions);
+                _serviceClient = new BlobServiceClient(blobOptions.ServiceUri, new AzureSasCredential(blobOptions.Token), blobOptions.BlobClientOptions);
             }
             else
             {
                 throw new ArgumentException("Must be set 'ConnectionString' or 'ServiceUri' + 'Token'.");
             }
 
-            _containerClient = _serviceClient.GetBlobContainerClient(options.ContainerName);
+            _containerClient = _serviceClient.GetBlobContainerClient(blobOptions.ContainerName);
 
-            if (string.IsNullOrEmpty(options.LocalCacheRoot))
+            if (string.IsNullOrEmpty(blobOptions.LocalCacheRoot))
             {
                 _localCacheRoot = Path.Combine(Path.GetTempPath(), TEMP_SUBPATH, _containerClient.AccountName, _containerClient.Name);
 
@@ -64,8 +83,8 @@ namespace WaterTrans.AzureBlobFileProvider
             }
             else
             {
-                _localCacheRoot = options.LocalCacheRoot;
-                _physicalFileProvider = new PhysicalFileProvider(options.LocalCacheRoot);
+                _localCacheRoot = blobOptions.LocalCacheRoot;
+                _physicalFileProvider = new PhysicalFileProvider(blobOptions.LocalCacheRoot);
             }
         }
 
@@ -86,9 +105,15 @@ namespace WaterTrans.AzureBlobFileProvider
             string cacheKey = fullPath.ToLower();
             IFileInfo localCacheFileInfo = _physicalFileProvider.GetFileInfo(escapedSubpath);
 
+            // Check the value of the query parameter to ignore local caching.
+            if (!Boolean.TryParse(_httpContextAccessor.HttpContext.Request.Query[_ignoreCacheQueryKey], out bool ignoreCache))
+            {
+                ignoreCache = false;
+            }
+
             // Check the timeout of the local cache.
             _localCacheTimeouts.TryGetValue(cacheKey, out timeout);
-            if (localCacheFileInfo.Exists && DateTimeOffset.UtcNow < timeout)
+            if (!ignoreCache && localCacheFileInfo.Exists && DateTimeOffset.UtcNow < timeout)
             {
                 return localCacheFileInfo;
             }
@@ -107,11 +132,14 @@ namespace WaterTrans.AzureBlobFileProvider
                     CopyToLocalCache(fullPath, blobFileInfo.CreateReadStream(), blobFileInfo.LastModified);
                 }
 
-                var newTimeout = DateTimeOffset.UtcNow.AddSeconds(_localCacheTimeoutInSeconds);
-                _localCacheTimeouts.AddOrUpdate(cacheKey, newTimeout, (key, value) =>
+                if (!ignoreCache)
                 {
-                    return newTimeout;
-                });
+                    var newTimeout = DateTimeOffset.UtcNow.AddSeconds(_localCacheTimeoutInSeconds);
+                    _localCacheTimeouts.AddOrUpdate(cacheKey, newTimeout, (key, value) =>
+                    {
+                        return newTimeout;
+                    });
+                }
 
                 return blobFileInfo;
             }

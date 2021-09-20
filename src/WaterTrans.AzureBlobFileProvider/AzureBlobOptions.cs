@@ -42,5 +42,10 @@ namespace WaterTrans.AzureBlobFileProvider
         /// Specifies the timeout of the local cache in seconds. The default is 300 seconds.
         /// </summary>
         public int LocalCacheTimeout { get; set; } = 300;
+
+        /// <summary>
+        /// Specifies the key of query parameter to be ignored by local caching.
+        /// </summary>
+        public string IgnoreCacheQueryKey { get; set; } = "ignoreCache";
     }
 }

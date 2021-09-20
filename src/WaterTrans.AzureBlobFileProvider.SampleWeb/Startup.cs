@@ -12,25 +12,21 @@ namespace WaterTrans.AzureBlobFileProvider.SampleWeb
         public void ConfigureServices(IServiceCollection services)
         {
             // ConnectionString
-            var blobOptions = new AzureBlobOptions
+            services.AddAzureBlobFileProvider(options =>
             {
-                ConnectionString = "UseDevelopmentStorage=true",
-                ContainerName = "files",
-                LocalCacheTimeout = 300,
-            };
+                options.ConnectionString = "UseDevelopmentStorage=true";
+                options.ContainerName = "files";
+                options.LocalCacheTimeout = 300;
+            });
 
             // SAS (ServiceUri + Token)
-            /*
-            var blobOptions = new AzureBlobOptions
-            {
-                ServiceUri = new System.Uri("BLOB_SERVICE_SAS_URL"), // ex.) https://youraccount.blob.core.windows.net
-                Token = "SAS_TOKEN",                                 // ex.) ?sv=2020-08-04&ss=b&srt=co&sp=rltfx&se=2021-01-01T00:00:00Z&st=2021-01-02T00:00:00Z&spr=https&sig=xxxxxxxxxxxxxxxxxxxxxx%2Bx%2Fxx%2Bxxxxxxxxxxxxxxx%3D
-                ContainerName = "files",
-                LocalCacheTimeout = 300,
-            };
-            */
-
-            services.AddSingleton(new AzureBlobFileProvider(blobOptions));
+            //services.AddAzureBlobFileProvider(options =>
+            //{
+            //    options.ServiceUri = new System.Uri("BLOB_SERVICE_SAS_URL"); // ex.) https://youraccount.blob.core.windows.net
+            //    options.Token = "SAS_TOKEN";                                 // ex.) ?sv=2020-08-04&ss=b&srt=co&sp=rltfx&se=2021-01-01T00:00:00Z&st=2021-01-02T00:00:00Z&spr=https&sig=xxxxxxxxxxxxxxxxxxxxxx%2Bx%2Fxx%2Bxxxxxxxxxxxxxxx%3D
+            //    options.ContainerName = "files";
+            //    options.LocalCacheTimeout = 300;
+            //});
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

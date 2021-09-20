@@ -12,7 +12,7 @@
     <RepositoryUrl>https://github.com/WaterTrans/AzureBlobFileProvider</RepositoryUrl>
     <PackageTags>IFileProvider BlobFileProvider</PackageTags>
     <PackageReleaseNotes>https://github.com/WaterTrans/AzureBlobFileProvider</PackageReleaseNotes>
-    <Version>1.0.1</Version>
+    <Version>1.1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.19" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="3.1.19" />
   </ItemGroup>
 
